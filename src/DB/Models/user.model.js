@@ -26,8 +26,9 @@ const userSchema = new mongoose.Schema(
       match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"],
     },
     password: {
-      type: String,
-      required: [true, "Password is required"],
+    type: String,
+     required: true,
+      select: false,
       minlength: 8,
     },
     gender: {
@@ -37,6 +38,7 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: Object.values(USER_ROLES),
+      default: USER_ROLES.USER,
     },
     phoneNumber: {
       type: String,

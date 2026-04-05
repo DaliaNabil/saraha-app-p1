@@ -1,15 +1,13 @@
+import { decodeToken } from "../../Common/index.js";
+import envConfig from "../../config/env.config.js";
 
-import User from '../../DB/Models/uer.model.js';
-import { decrypt } from '../../Common/index.js';
-// import {User} from './../../DB/Models/index.js';
+const jwtSecrets = envConfig.jwt;
 
- export const getProfileService = async (id)=>{
-    const user = await User.findById(id)
+export const getProfileService = async (headers) => {
+  //get token
+  const accessToken = headers.authorization;
+  console.log({ accessToken });
 
-    if(user.phoneNumber){
-        user.pho4 = decrypt(user.phoneNumber)
-
-    }
-
-     return user
- }
+  //verfy token
+  return decodeToken({token: accessToken });
+};
