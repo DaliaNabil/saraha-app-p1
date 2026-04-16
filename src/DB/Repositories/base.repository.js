@@ -48,4 +48,12 @@ export class BaseRepository {
   findOneAndDelete(filter) {
     return this.model.findOneAndDelete(filter || {});
   }
+
+  findByIdAndDelete(id) {
+    return this.model.findByIdAndDelete(id);
+  }
+
+  updateWithFindById(id, update, options) {
+    return this.model.findByIdAndUpdate(id, update, options);
+  }
 }

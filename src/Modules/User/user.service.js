@@ -1,13 +1,40 @@
 import { decodeToken } from "../../Common/index.js";
-import envConfig from "../../config/env.config.js";
+import userRepository from "../../DB/Repositories/user.repository.js";
 
-const jwtSecrets = envConfig.jwt;
-
-export const getProfileService = async (headers) => {
+export const getProfileService =  (req) => {
   //get token
-  const accessToken = headers.authorization;
-  console.log({ accessToken });
+  // const accessToken = headers.authorization;
+  // console.log({ accessToken });
+  
+ console.log({req})
 
   //verfy token
-  return decodeToken({token: accessToken });
+  // const user = decodeToken({ token: headers.authorization });
+  return  req.user;
 };
+
+
+
+
+export const updateUserProfile = async ({user ,body}) => {
+    //update user profile
+    const{ _id} = user;
+    const { firstName, lastName, age , gender, email } = body;
+    if(email){
+      const existingUser = await userRepository.findOne({ email });
+      if (existingUser ){
+        throw new Error('Email is already in use by another account'), { cause: { status: 409 } };
+      }
+    }
+     
+    console.log({ _id , body });
+
+   return await userRepository.findByIdAndUpdate(_id , 
+    { firstName, lastName, age , gender, email } ,
+     { new: true })  
+}
+
+
+export const getAllUsers = async () => {
+  return await userRepository.find({})
+}

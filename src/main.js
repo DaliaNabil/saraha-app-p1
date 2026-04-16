@@ -1,5 +1,6 @@
 import "./config/env.config.js";
 import express from "express";
+import cors from 'cors';
 import envConfig from "./config/env.config.js";
 import dbConnection from "./DB/db.connection.js";
 import { globalErrorHandler } from "./Middlewares/index.js";
@@ -9,6 +10,7 @@ import {
   userController,
 } from "./Modules/index.js";
 import { decrypt, encrypt } from "./Common/index.js";
+import { corsOptions } from "./config/cors.config.js";
 
 // Express
 const app = express();
@@ -17,8 +19,11 @@ const port = envConfig.app.PORT;
 
 //Database connection
 dbConnection();
+//cors middleware
+app.use(cors(corsOptions));
 // json parseer
 app.use(express.json())
+
 //controllers
 
 app.use("/api/auth", authController);
