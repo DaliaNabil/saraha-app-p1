@@ -1,4 +1,4 @@
-export const responseFormatter = (handler) => {
+ export const responseFormatter = (handler) => {
 
     return async (req, res, next) => {
 

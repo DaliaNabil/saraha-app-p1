@@ -2,6 +2,7 @@ import { OAuth2Client } from "google-auth-library";
 import crypto from "crypto";
 import {
   compare,
+  ConflictException,
   createTokenCredentials,
   decodeToken,
   encrypt,
@@ -25,10 +26,12 @@ export const registerService = async (body) => {
     { email },
     { email: 1 },
   );
-  console.log(checkEmailDuplication);
+  // console.log(checkEmailDuplication);
 
   if (checkEmailDuplication) {
-    throw new Error("Email already exists", { cause: { status: 409 } });
+    throw new ConflictException("Email already exists", {
+      duplicatedEmail: email,
+    });
   }
 
   const hashedPassword = await hash(password, 12);
@@ -52,14 +55,16 @@ export const registerService = async (body) => {
 export const loginService = async (body) => {
   const { email, password } = body;
 
-  const user = await userRepository.findOne({
+const user = await userRepository.findOne({
     email,
     provider: PROVIDERS.SYSTEM,
-  });
+  }).select("+password"); 
 
   if (!user) {
     throw new Error("Invalid email or password", { cause: { status: 401 } });
   }
+
+  
   const isPasswordValid = await compare(password, user.password);
 
   if (!isPasswordValid) {
@@ -94,7 +99,7 @@ export const refreshTokenService = async (header) => {
   });
   return { accessToken };
 };
- const buildTokens = ( userData)=>{
+const buildTokens = (userData) => {
   //Generat user token [access token ]
   let tokenPayload = {
     sub: userData._id,
@@ -115,7 +120,7 @@ export const refreshTokenService = async (header) => {
   });
   return { accessToken, refreshToken };
 };
- 
+
 const verifyIdToken = async (token) => {
   const ticket = await client.verifyIdToken({
     idToken: token,
@@ -126,7 +131,7 @@ const verifyIdToken = async (token) => {
   const payload = ticket.getPayload();
   return payload;
 };
- //update user if exist or create new one
+//update user if exist or create new one
 const handleUserUpdateOrCreadion = async (user, payload) => {
   const { given_name, family_name, email, sub } = payload;
   if (user) {
@@ -139,8 +144,8 @@ const handleUserUpdateOrCreadion = async (user, payload) => {
         googleSub: sub,
         provider: PROVIDERS.GOOGLE,
       },
-       { new: true },
-   );
+      { new: true },
+    );
   } else {
     const hashedPassword = await hash(crypto.randomBytes(12).toString("hex")); // generate random password for google users
     return userRepository.create({
@@ -152,47 +157,50 @@ const handleUserUpdateOrCreadion = async (user, payload) => {
       password: hashedPassword, // generate random password for google users
     });
   }
-}
+};
 
 export const gmailRegisterService = async (body) => {
   const { idToken } = body;
   //1- verify id token and get the payload
   const payload = await verifyIdToken(idToken);
   if (!payload || !payload.email_verified) {
-    throw new Error( "Your account is not authorized , please verify your email ",{ cause: { status: 401 } },);
+    throw new Error(
+      "Your account is not authorized , please verify your email ",
+      { cause: { status: 401 } },
+    );
   }
 
-//2- fetch user from DB by email or google sub and provider = google
+  //2- fetch user from DB by email or google sub and provider = google
   const user = await userRepository.findOne({
     $or: [{ googleSub: payload.sub }, { email: payload.email }],
     provider: PROVIDERS.GOOGLE,
   });
-//3- update user if exist or create new one
+  //3- update user if exist or create new one
   const userData = await handleUserUpdateOrCreadion(user, payload);
   //generate tokens for user
   return buildTokens(userData);
-}
-
-
-
+};
 
 export const gmailLoginService = async (body) => {
   const { idToken } = body;
   //1- verify id token and get the payload
-  const payload = await verifyIdToken(idToken); 
+  const payload = await verifyIdToken(idToken);
   if (!payload || !payload.email_verified) {
-    throw new Error( "Your account is not authorized , please verify your email ",{ cause: { status: 401 } },);
+    throw new Error(
+      "Your account is not authorized , please verify your email ",
+      { cause: { status: 401 } },
+    );
   }
 
-//2- fetch user from DB by email or google sub and provider = google
+  //2- fetch user from DB by email or google sub and provider = google
   const user = await userRepository.findOne({
     $or: [{ googleSub: payload.sub }, { email: payload.email }],
     provider: PROVIDERS.GOOGLE,
-  }); 
+  });
 
   if (!user) {
     throw new Error("Invalid email or password", { cause: { status: 401 } });
-  } 
+  }
   //generate tokens for user
-  return buildTokens(user); 
+  return buildTokens(user);
 };

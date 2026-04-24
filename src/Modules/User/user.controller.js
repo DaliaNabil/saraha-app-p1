@@ -2,6 +2,8 @@ import { Router } from "express";
 import * as userService from "./user.service.js";
 import { authenticate, authorize } from "../../Middlewares/authentication.middleware.js";
 import { USER_ROLES } from "../../Common/constants.js";
+import multerLocal from "../../Middlewares/multer.middleware.js";
+
 
 const userController = Router();
 
@@ -26,10 +28,19 @@ userController.put("/update", authenticate, async (req, res) => {
 
 //list all users
 
-userController.get('/all', authenticate , authorize([USER_ROLES.ADMIN, USER_ROLES.USER]), async (req, res) => { 
+userController.get('/all', authenticate , async (req, res) => { 
    const result = await userService.getAllUsers();
    res.status(200).json({ message: "Users retrieved successfully", data: result });
 })
 
+
+//upload profile picture
+userController.patch('/upload/profile', authenticate , multerLocal('profiles').single('profilePicture'), authorize([USER_ROLES.ADMIN, USER_ROLES.USER]), async (req, res) => { 
+   console.log(req.file);
+   
+   const result = await userService.UploadProfilePicture(req.user, req.file);
+ 
+  res.status(200).json({ message: "Profile picture uploaded successfully", data: result });
+});
 
 export default userController;

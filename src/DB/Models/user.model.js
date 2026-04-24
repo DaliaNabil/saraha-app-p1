@@ -1,5 +1,10 @@
 import mongoose from "mongoose";
-import { GENDER, USER_ROLES, STATUS, PROVIDERS } from "../../Common/constants.js";
+import {
+  GENDER,
+  USER_ROLES,
+  STATUS,
+  PROVIDERS,
+} from "../../Common/constants.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -26,8 +31,8 @@ const userSchema = new mongoose.Schema(
       match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"],
     },
     password: {
-    type: String,
-     required: true,
+      type: String,
+      required: true,
       select: false,
       minlength: 8,
     },
@@ -54,19 +59,19 @@ const userSchema = new mongoose.Schema(
       enum: Object.values(STATUS),
       default: STATUS.ACTIVE,
     },
-    googleSub:{
+    googleSub: {
       type: String,
-       index: {
+      index: {
         name: "idx_googleSub_unique",
         unique: true,
+      },
     },
-  },
-  provider:{
-    type: String,
-    enum:Object.values(PROVIDERS),
-    default:PROVIDERS.SYSTEM
-  }
-  
+    provider: {
+      type: String,
+      enum: Object.values(PROVIDERS),
+      default: PROVIDERS.SYSTEM,
+    },
+    profilePicture: { type: String },
   },
   {
     timestamps: true,

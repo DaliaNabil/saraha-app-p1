@@ -9,8 +9,9 @@ import {
   messageController,
   userController,
 } from "./Modules/index.js";
-import { decrypt, encrypt } from "./Common/index.js";
+import { decrypt, encrypt, redisConnection } from "./Common/index.js";
 import { corsOptions } from "./config/cors.config.js";
+import { NotFoundException } from "./Common/Utils/Errors/exception.js";
 
 // Express
 const app = express();
@@ -19,9 +20,16 @@ const port = envConfig.app.PORT;
 
 //Database connection
 dbConnection();
+
+//redis connection
+redisConnection()
+
 //cors middleware
 app.use(cors(corsOptions));
-// json parseer
+
+//uploads
+app.use('/uploads', express.static('uploads'))
+// json parser
 app.use(express.json())
 
 //controllers
@@ -36,7 +44,7 @@ app.get("/", (req, res) => {
 });
 
 app.use((req, res, next) => {
-  res.status(404).json({ message: "Router  not found" });
+  throw new NotFoundException('this router is not found', { path: req.path })
 });
 
 // global error handler
@@ -50,4 +58,4 @@ app.listen(port, () => {
 
 const encryptData = encrypt('hello')
 const decrypted = decrypt(encryptData)
-console.log({encryptData , decrypted})
+console.log({ encryptData, decrypted })

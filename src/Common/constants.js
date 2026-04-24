@@ -1,3 +1,5 @@
+import { application } from "express";
+
 export const USER_ROLES = {
   USER: "user",
   ADMIN: "admin",
@@ -24,4 +26,11 @@ export const PROVIDERS = {
   GOOGLE: "google",   
   FACEBOOK: "facebook",
   APPLE: "apple", 
+}
+
+export const fileExtensions={
+    image:['jpg', 'jpeg' ,'png' ,'gif'],
+    vido:['mp4', 'avi', 'mkv','mov'] ,
+    application:['pdf', 'doc','docx']
+
 }
