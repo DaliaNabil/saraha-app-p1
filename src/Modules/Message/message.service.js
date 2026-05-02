@@ -5,3 +5,7 @@ export const sendMessage = (body)=>{
     //Repo pattern
     return  messageRepository.create({content , receiverId})    
 }
+
+export const listMyMessages = (userId)=>{
+    return messageRepository.find({receiverId:userId})
+}
