@@ -3,7 +3,9 @@ import * as authService from "./auth.service.js";
 import { responseFormatter } from "../../Middlewares/unified-response-middleware.js";
 import validation from "../../Middlewares/validation.middleware.js";
 import { registerSchema } from "../../Validators/auth.validators.js";
-
+import { auth } from "google-auth-library";
+import { authenticate } from "../../Middlewares/authentication.middleware.js";
+import { verifyEmailService } from "./auth.service.js";
 const authController = Router();
 
 //test
@@ -57,6 +59,31 @@ authController.post( "/gmail/register",
   }),
 );
 
+ authController.put("/verify",
+  responseFormatter(async (req, res) => {
+    const result = await authService.verifyEmailService(req.body);
+    return {
+      message: "User verified successfully",
+      data: result,
+      meta: { statusCode: 200 },
+    };
+  }),
+);
+
+
+
+authController.post('/resend-otp', async (req, res, next) => {
+    try {
+        const result = await authService.resendOTPService(req.body);
+        res.status(200).json({ 
+            success: true, 
+            message: "OTP resent successfully", 
+            ...result 
+        });
+    } catch (error) {
+        next(error); 
+    }
+});
 //gmail / login
 
 authController.post("/gmail/login",
@@ -68,6 +95,24 @@ authController.post("/gmail/login",
       meta: { statusCode: 200 },
     };
   }),
+);
+
+authController.post(
+  "/logout",
+  authenticate,
+  responseFormatter(async (req, res) => {
+    
+    const refreshToken = req.headers.refreshtoken ;
+
+    
+    const result = await authService.logoutService(req.accessTokenData, refreshToken);
+
+    return {
+      message: "User logged out successfully",
+      data: result,
+      meta: { statusCode: 200 },
+    };
+  })
 );
 
 export default authController;

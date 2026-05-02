@@ -11,7 +11,7 @@ import { fileExtensions } from "../Common/index.js"
             cb(null , destination)
         },
         filename:function(req, file, cb){
-            console.log({file});
+            
             
             const uniquSuffix = Date.now()+'-'+Math.round(Math.random()* 1E9)
             cb(null, uniquSuffix +'-'+file.originalname )

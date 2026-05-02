@@ -5,7 +5,7 @@ import fs from 'node:fs'
 const encryptionEnv = envConfig.encryption;
 
  const encryptionKey = Buffer.from(encryptionEnv.ENCRYPTION_KEY, 'hex');
- console.log({encryptionKey})
+
 export const encrypt = (plainText) => {
     
    //  const ivLength = parseInt(encryptionEnv.IV_LENGHT) || 16; 
@@ -36,7 +36,6 @@ export const decrypt = (inputCipher)=>{
 }
 
 
-//"b1109981d90933ee43c784a207f847f7:00b675b7ca12b606b3b47819946ea943"
 if (fs.existsSync('publicKey.pem')&& fs.existsSync('privateKey.pem')){
     console.log('key already generated')
 } else{
@@ -57,7 +56,7 @@ if (fs.existsSync('publicKey.pem')&& fs.existsSync('privateKey.pem')){
     
     fs.writeFileSync('publicKey.pem', publicKey)
     fs.writeFileSync('privateKey.pem', privateKey)
-    console.log(publicKey ,privateKey)
+   
 }
     
 

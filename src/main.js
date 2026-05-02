@@ -12,11 +12,16 @@ import {
 import { decrypt, encrypt, redisConnection } from "./Common/index.js";
 import { corsOptions } from "./config/cors.config.js";
 import { NotFoundException } from "./Common/Utils/Errors/exception.js";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+// import { limiterOptions } from "./config/limiter.config.js";
+import { keys } from "./Common/Services/redis.service.js";
+import { createRateLimiter } from "./config/limiter.config.js";
 
 // Express
 const app = express();
 //port
-const port = envConfig.app.PORT;
+const port = parseInt(envConfig.app.PORT || 3000); ;
 
 //Database connection
 dbConnection();
@@ -25,7 +30,9 @@ dbConnection();
 redisConnection()
 
 //cors middleware
-app.use(cors(corsOptions));
+const limiter = createRateLimiter(keys.redisClient)
+app.use(limiter)
+app.use(cors(corsOptions) , helmet() );
 
 //uploads
 app.use('/uploads', express.static('uploads'))
@@ -58,4 +65,4 @@ app.listen(port, () => {
 
 const encryptData = encrypt('hello')
 const decrypted = decrypt(encryptData)
-console.log({ encryptData, decrypted })
+

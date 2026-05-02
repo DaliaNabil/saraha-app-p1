@@ -19,7 +19,7 @@ userController.put("/update", authenticate, async (req, res) => {
     user: req.user,
     body: req.body,
   });
-  //  console.log({ result });
+  
 
   res
     .status(200)
@@ -36,11 +36,17 @@ userController.get('/all', authenticate , async (req, res) => {
 
 //upload profile picture
 userController.patch('/upload/profile', authenticate , multerLocal('profiles').single('profilePicture'), authorize([USER_ROLES.ADMIN, USER_ROLES.USER]), async (req, res) => { 
-   console.log(req.file);
+  
    
    const result = await userService.UploadProfilePicture(req.user, req.file);
  
   res.status(200).json({ message: "Profile picture uploaded successfully", data: result });
 });
 
+
+//delete user 
+userController.delete('/delete', authenticate , async (req, res) => {
+  const result = await userService.deleteUserAccount(req.user);
+  res.status(200).json({ message: "User deleted successfully", data: result });
+})
 export default userController;

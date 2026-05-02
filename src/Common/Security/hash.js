@@ -1,11 +1,10 @@
 
-import bcrypt from 'bcrypt';
+import argon2 from "argon2"
 
+export const hash = (plainText)=>{
+    return argon2.hash(plainText)
+}
 
- export const hash = (plainText , salt =10) =>{
-    return bcrypt.hash(plainText, salt);
- }
-
- export const compare = (plainText, hashText) =>{
-     return bcrypt.compare(plainText, hashText);
- }
+export const compare = (plainText, hashedText)=>{
+    return argon2.verify(hashedText, plainText)
+}

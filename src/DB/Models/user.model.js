@@ -5,6 +5,8 @@ import {
   STATUS,
   PROVIDERS,
 } from "../../Common/constants.js";
+import { expire } from "../../Common/Services/redis.service.js";
+ import { CHANNELS } from "../../Common/constants.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -72,6 +74,26 @@ const userSchema = new mongoose.Schema(
       default: PROVIDERS.SYSTEM,
     },
     profilePicture: { type: String },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    OTPs: [
+      {
+        value: {
+          type: String,
+          required: true,
+        },
+        expireAt: {
+          type: Date,
+          default: Date.now() + 5 * 60 * 1000,
+        },
+        channel:{
+          type: String,
+          enum: Object.values(CHANNELS),
+        }
+      },
+    ],
   },
   {
     timestamps: true,

@@ -21,7 +21,6 @@ export const registerSchema = {
     })
     .with('password', 'confirmPassword') 
     .options({ 
-        presence: 'required',
-        abortEarly: false    
+        presence: 'required'  
     })
 }

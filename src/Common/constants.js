@@ -34,3 +34,8 @@ export const fileExtensions={
     application:['pdf', 'doc','docx']
 
 }
+
+export const CHANNELS ={
+    EMAIL:'email',
+    PHONE:'phone'
+}

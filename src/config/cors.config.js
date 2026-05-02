@@ -2,7 +2,7 @@ import envConfig from "./env.config.js";
 
 
 const whiteListOrgins = envConfig.cors.whiteListOrgins; 
- console.log({whiteListOrgins});
+
  
 export const corsOptions = {
     origin: (origin, callback) => {

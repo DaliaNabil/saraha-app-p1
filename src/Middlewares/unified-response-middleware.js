@@ -4,7 +4,7 @@
 
         try {
                 const result = await handler(req, res, next);
-            console.log( result);
+           
 
             if(res.headersSent){
                 return;

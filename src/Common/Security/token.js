@@ -2,6 +2,8 @@ import jwt from "jsonwebtoken";
 import envConfig from "../../config/env.config.js";
 import userRepository from "../../DB/Repositories/user.repository.js";
 import { TOKEN_TYPES, USER_ROLES } from "../constants.js";
+import { BadRequstException } from "../Utils/index.js";
+import { get } from "../Services/redis.service.js";
 const jwtSecrets = envConfig.jwt;
 
 //Generate Token
@@ -16,8 +18,7 @@ export const verifyToken = ({ token, secretKey, options }) => {
 
 //Create Login credentials
 
-export const createTokenCredentials = ({ payload, options , requiredToken}) => {
-
+export const createTokenCredentials = ({ payload, options, requiredToken }) => {
   const signature = getSignatureByTypeAndRole({
     role: payload.role,
     both: true,
@@ -31,11 +32,11 @@ export const createTokenCredentials = ({ payload, options , requiredToken}) => {
         secretKey: signature.accessSignature,
         options: options.access,
       });
-     
- break;
+
+      break;
     case TOKEN_TYPES.REFRESH:
       refreshToken = generateToken({
-        payload,    
+        payload,
         secretKey: signature.refreshSignature,
         options: options.refresh,
       });
@@ -44,7 +45,7 @@ export const createTokenCredentials = ({ payload, options , requiredToken}) => {
     default:
       accessToken = generateToken({
         payload,
-        secretKey: signature.accessSignature,   
+        secretKey: signature.accessSignature,
         options: options.access,
       });
 
@@ -53,28 +54,42 @@ export const createTokenCredentials = ({ payload, options , requiredToken}) => {
         secretKey: signature.refreshSignature,
         options: options.refresh,
       });
-  break
-  }     
+      break;
+  }
 
   return { accessToken, refreshToken };
 };
 
+/**
+ * @param {string} -token - The JWT token to decode and verify 
+ * @return {Object} An object containing the decoded user data and the user document from the database
+ * @throws {Error} Throws an error if the token is invalid, expired
+ *  @param {ENUM} =tokenType 
+ * @return {Object} An object containing the decoded user data and the user document from the database
+ *  
+ * 
+ */
 export const decodeToken = async ({ token, tokenType }) => {
   //decode token to get user role
   const data = jwt.decode(token);
-  // console.log({ data });
 
-  if ( !data || !data.role)
+
+  if (!data || !data.role)
     throw new Error("Invalid payload", { cause: { status: 400 } });
 
   const signature = getSignatureByTypeAndRole({ role: data.role, tokenType });
   //verfy token
   const decodedData = verifyToken({ token, secretKey: signature });
-  console.log({ decodedData });
+
 
   if (!decodedData.sub)
     throw new Error("Invalid payload", { cause: { status: 400 } });
 
+  //check if jti is blacklisted
+  const isBlackListed = await get({key:`bl_${tokenType}_${decodeToken.jti}`})
+ if (isBlackListed){
+  throw new BadRequstException('Token is blacklisted, please login again')
+ }
   const user = await userRepository.findById(decodedData.sub);
   if (!user) {
     throw new Error("User not found, please register", {
@@ -92,7 +107,6 @@ export const detectSignature = ({ role }) => {
   } else {
     signature = jwtSecrets.user;
   }
-  // console.log({ "Detected signature": signature });
   return signature;
 };
 
@@ -114,6 +128,5 @@ export const getSignatureByTypeAndRole = ({ role, tokenType, both }) => {
     default:
       throw new Error("Invalid token type", { cause: { status: 400 } });
   }
-  // console.log({ tokenSignature });
   return tokenSignature;
 };

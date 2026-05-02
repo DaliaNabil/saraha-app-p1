@@ -29,3 +29,9 @@ export class InternalServerErrorException extends HttpAppError{
         
     }
 }
+
+export class TooManyRequestsException extends HttpAppError{
+     constructor(message = 'Too many requests', details = null) {
+        super(message , 429 , 'TOO_MANY_REQUESTS' ,details);        
+    }
+}

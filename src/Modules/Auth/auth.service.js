@@ -1,17 +1,24 @@
 import { OAuth2Client } from "google-auth-library";
 import crypto from "crypto";
 import {
-  compare,
+  NotFoundException,
+  BadRequstException,
   ConflictException,
   createTokenCredentials,
   decodeToken,
   encrypt,
   hash,
+  compare,
+  CHANNELS,
   PROVIDERS,
   TOKEN_TYPES,
 } from "../../Common/index.js";
 import envConfig from "../../config/env.config.js";
 import userRepository from "../../DB/Repositories/user.repository.js";
+import { randomUUID } from "node:crypto";
+import { blacklistToken } from "../../Common/Services/redis.service.js";
+import { emailEvent, sendEmail } from "../../Common/Services/email.service.js";
+import { otpTemplate } from "../../Common/Utils/template.js";
 
 const jwtSecrets = envConfig.jwt;
 
@@ -26,7 +33,7 @@ export const registerService = async (body) => {
     { email },
     { email: 1 },
   );
-  // console.log(checkEmailDuplication);
+
 
   if (checkEmailDuplication) {
     throw new ConflictException("Email already exists", {
@@ -46,8 +53,97 @@ export const registerService = async (body) => {
   if (phone) {
     userObject.phoneNumber = encrypt(phone);
   }
-  //Repo pattern
+  //otp
+  const otp = Math.floor(100000 + Math.random() * 900000);
+  console.log({ otp });
+
+  userObject.OTPs = [
+    {
+      value: otp,
+      expiresAt: new Date(Date.now() + 1 * 60 * 1000),
+      channel: CHANNELS.EMAIL,
+    },
+  ];
+
+  emailEvent.emit("sendEmail", {
+    to: email,
+    subject: "Verification code for your account",
+    html: otpTemplate({ firstName, otp, expiration: "10 minutes" }),
+  });
+  // Repo pattern
   return userRepository.create(userObject);
+};
+//resend otp
+export const resendOTPService = async (body) => {
+  const { email } = body;
+
+  const user = await userRepository.findOne({
+    email: email.trim().toLowerCase(),
+  });
+  if (!user) {
+    throw new NotFoundException("User not found", { cause: { status: 404 } });
+  }
+
+  if (user.isEmailVerified) {
+    throw new BadRequstException("Email is already verified", {
+      cause: { status: 400 },
+    });
+  }
+
+  const newOtp = Math.floor(100000 + Math.random() * 900000);
+
+  const otpEntry = {
+    value: newOtp,
+    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    channel: CHANNELS.EMAIL,
+  };
+
+  //new
+  await userRepository.findByIdAndUpdate(user._id, {
+    $push: { OTPs: otpEntry },
+  });
+
+  emailEvent.emit("sendEmail", {
+    to: user.email,
+    subject: "New Verification Code",
+    html: otpTemplate({
+      firstName: user.firstName,
+      otp: newOtp,
+      expiration: "10 minutes",
+    }),
+  });
+
+  return { message: "OTP resent successfully" };
+};
+export const verifyEmailService = async (body) => {
+  const { email, otp } = body;
+  const user = await userRepository.findOne({ email });
+
+  if (!user) {
+    throw new NotFoundException("User not found", { cause: { status: 404 } });
+  }
+
+  const otpObject = user.OTPs.find(
+    (item) => item.value === otp && item.channel === CHANNELS.EMAIL,
+  );
+
+  if (!otpObject) {
+    throw new NotFoundException("Invalid OTP", { cause: { status: 400 } }); // يفضل 400 لأن البيانات غلط مش مش موجودة
+  }
+
+  if (new Date(otpObject.expiresAt) < new Date()) {
+    throw new BadRequestException("OTP has expired", {
+      cause: { status: 400 },
+    });
+  }
+
+  const newOtpsArray = user.OTPs.filter((item) => item.value !== otp);
+
+  return userRepository.findByIdAndUpdate(
+    user._id,
+    { isEmailVerified: true, OTPs: newOtpsArray },
+    { new: true },
+  );
 };
 
 //login
@@ -55,16 +151,17 @@ export const registerService = async (body) => {
 export const loginService = async (body) => {
   const { email, password } = body;
 
-const user = await userRepository.findOne({
-    email,
-    provider: PROVIDERS.SYSTEM,
-  }).select("+password"); 
+  const user = await userRepository
+    .findOne({
+      email,
+      provider: PROVIDERS.SYSTEM,
+    })
+    .select("+password");
 
   if (!user) {
     throw new Error("Invalid email or password", { cause: { status: 401 } });
   }
 
-  
   const isPasswordValid = await compare(password, user.password);
 
   if (!isPasswordValid) {
@@ -83,7 +180,7 @@ export const refreshTokenService = async (header) => {
     token: refreshToken,
     tokenType: TOKEN_TYPES.REFRESH,
   });
-  console.log({ decodedData });
+
   const { accessToken } = createTokenCredentials({
     payload: {
       sub: decodedData.sub,
@@ -99,6 +196,7 @@ export const refreshTokenService = async (header) => {
   });
   return { accessToken };
 };
+
 const buildTokens = (userData) => {
   //Generat user token [access token ]
   let tokenPayload = {
@@ -112,9 +210,11 @@ const buildTokens = (userData) => {
     options: {
       access: {
         expiresIn: jwtSecrets[userData.role].accessExpiration,
+        jwtid: randomUUID(),
       },
       refresh: {
         expiresIn: jwtSecrets[userData.role].refreshExpiration,
+        jwtid: randomUUID(),
       },
     },
   });
@@ -203,4 +303,28 @@ export const gmailLoginService = async (body) => {
   }
   //generate tokens for user
   return buildTokens(user);
+};
+
+export const logoutService = async (accessTokenData, refreshToken) => {
+  const { decodedData: refreshTokenData } = await decodeToken({
+    token: refreshToken,
+    tokenType: TOKEN_TYPES.REFRESH,
+  });
+
+  const { exp: refreshExpiration, jti: refreshJti } = refreshTokenData;
+  const { exp: accessExpiration, jti: accessJti } = accessTokenData;
+
+  Promise.all([
+    blacklistToken({
+      key: `bl_${TOKEN_TYPES.REFRESH}_${refreshJti}`,
+      exp: refreshExpiration,
+    }),
+    blacklistToken({
+      key: `bl_${TOKEN_TYPES.ACCESS}_${accessJti}`,
+      exp: accessExpiration,
+    }),
+  ]).catch((err) => {
+    console.error("Error blacklisting tokens:", err);
+  });
+  return { message: "logged out successfully" };
 };

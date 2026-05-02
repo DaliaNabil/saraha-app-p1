@@ -24,36 +24,52 @@ export class BaseRepository {
   }
 
   findById(id) {
-     return this.model.findById(id);
-    
+    return this.model.findById(id);
   }
 
-    findOne(filter , select = {}) {
-   return  this.model.findOne(filter || {}).select(select);
-  } 
+  findOne(filter, select = {}) {
+    return this.model.findOne(filter || {}).select(select);
+  }
 
   find(filter) {
-     return this.model.find(filter || {});
-   
+    return this.model.find(filter || {});
   }
 
   deleteOne(filter) {
     return this.model.deleteOne(filter || {});
   }
 
-  deleteMany(filter) {
-    return this.model.deleteMany(filter || {});
-  }
-
   findOneAndDelete(filter) {
     return this.model.findOneAndDelete(filter || {});
   }
 
-  findByIdAndDelete(id) {
-    return this.model.findByIdAndDelete(id);
-  }
-
   updateWithFindById(id, update, options) {
     return this.model.findByIdAndUpdate(id, update, options);
+  }
+
+  deleteAll() {
+    return this.model.deleteMany({});
+  }
+
+  deleteMany(filter, options = {}) {
+    const { session, ...otherOptions } = options;
+    const query = this.model.deleteMany(filter || {}, otherOptions);
+    if (session) {
+      return query.session(session);
+    }
+    return query;
+  }
+
+  findByIdAndDelete(_id, options = {}) {
+    const { session, ...otherOptions } = options;
+    const query = this.model.findByIdAndDelete(_id, otherOptions);
+    if (session) {
+      return query.session(session);
+    }
+    return query;
+  }
+
+  countDocuments(filters) {
+    return this.model.countDocuments(filters);
   }
 }
